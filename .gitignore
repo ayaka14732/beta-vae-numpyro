@@ -1,6 +1,3 @@
 *.ipynb
-.results
-img_align_celeba
-celeba-dataset.zip
-*.csv
-load_mnist.py
+/.results/*
+!/.results/.placeholder
