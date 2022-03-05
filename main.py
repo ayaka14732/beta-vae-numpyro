@@ -122,8 +122,8 @@ def main():
         x_loc = decoder_nn.apply({'params': params['decoder$params']}, z)
         img = (x * 255.).astype(np.int32).reshape(28, 28)
         img_loc = (x_loc * 255.).astype(np.int32).reshape(28, 28)
-        plt.imsave(f'.results/orig_epoch{epoch}.png', img, cmap='gray')
-        plt.imsave(f'.results/reco_epoch{epoch}.png', img_loc, cmap='gray')
+        plt.imsave(f'orig_epoch{epoch}.png', img, cmap='gray')
+        plt.imsave(f'reco_epoch{epoch}.png', img_loc, cmap='gray')
 
     for i in range(1, num_epochs + 1):
         time_start = time.time()
