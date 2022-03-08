@@ -1,7 +1,11 @@
+autopep8
+ipykernel
+jupyter
+ipywidgets
 datasets==1.18.3
 matplotlib==3.5.1
-jax==0.2.25
-jaxlib==0.1.73
+jax==0.3.1
+jaxlib==0.3.0
 numpyro==0.9.1
 flax==0.4.0
 optax==0.1.1

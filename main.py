@@ -17,11 +17,11 @@ test_size = 10000
 dim_feature = 28 * 28
 
 dim_hidden = 400
-dim_z = 60
+dim_z = 50
 batch_size = 200
-num_epochs = 40
+num_epochs = 15
 learning_rate = 0.001
-beta = 0.05
+beta = 0.5
 
 def load_mnist(split: str) -> onp.ndarray:
     dataset = load_dataset('mnist', split=split)
@@ -63,7 +63,7 @@ def model(x: np.ndarray):
         with numpyro.handlers.scale(scale=beta):
             z = numpyro.sample('z', dist.Normal(0, 1).expand([dim_z]).to_event(1))
         img_loc = decoder(z)
-        return numpyro.sample('obs', dist.Bernoulli(img_loc).to_event(1), obs=x)
+        return numpyro.sample('obs', img_loc, obs=x)
 
 def guide(x: np.ndarray):
     encoder = flax_module('encoder', encoder_nn, input_shape=(batch_size, dim_feature))
