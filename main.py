@@ -14,7 +14,7 @@ import time
 
 # Dataset
 
-def load_mnist() -> onp.ndarray:
+def load_mnist() -> np.ndarray:
     train_set, test_set = load_dataset('mnist', split=('train', 'test'))
 
     train_x = onp.asarray([onp.asarray(x, dtype=onp.float32).reshape(-1) for x in train_set['image']]) / 255.
@@ -25,18 +25,41 @@ def load_mnist() -> onp.ndarray:
 
     return train_x, test_x
 
-train_x, test_x = load_mnist()
+def load_chairs() -> np.ndarray:
+    from os.path import expanduser, join
+
+    datafile = join(expanduser('~'), '.beta-vae/chair/chairs.npy')
+    x = onp.load(datafile)
+
+    data_size, _, _ = x.shape
+
+    train_size = int(0.8 * data_size)
+    test_size = data_size - train_size
+    train_x = x[:train_size]
+    test_x = x[train_size:]
+
+    train_x = train_x.reshape(train_size, -1)
+    test_x = test_x.reshape(test_size, -1)
+
+    train_x = np.array(train_x, dtype=np.bfloat16)
+    test_x = np.array(test_x, dtype=np.bfloat16)
+
+    return train_x, test_x
+
+train_x, test_x = load_chairs()
 train_size, dim_feature = train_x.shape
 test_size, _ =  test_x.shape
 
-image_size = 28
+image_size = 128
 assert image_size * image_size == dim_feature
+
+# Model
 
 dim_hidden = 400
 dim_z = 50
 batch_size = 200
 num_epochs = 15
-learning_rate = 0.001
+learning_rate = 0.0001  # MNIST: 0.001
 beta = 0.5
 
 class VAEEncoder(nn.Module):
