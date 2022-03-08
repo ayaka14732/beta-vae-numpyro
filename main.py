@@ -1,3 +1,4 @@
+#%%
 from datasets import load_dataset
 import flax.linen as nn
 import jax
@@ -12,20 +13,18 @@ import optax
 import matplotlib.pyplot as plt
 import time
 
+#%%
 # Dataset
 
-def load_mnist() -> np.ndarray:
+def load_mnist() -> onp.ndarray:
     train_set, test_set = load_dataset('mnist', split=('train', 'test'))
 
     train_x = onp.asarray([onp.asarray(x, dtype=onp.float32).reshape(-1) for x in train_set['image']]) / 255.
     test_x = onp.asarray([onp.asarray(x, dtype=onp.float32).reshape(-1) for x in test_set['image']]) / 255.
 
-    train_x = np.asarray(train_x, dtype=np.bfloat16)
-    test_x = np.asarray(test_x, dtype=np.bfloat16)
-
     return train_x, test_x
 
-def load_chairs() -> np.ndarray:
+def load_chairs() -> onp.ndarray:
     from os.path import expanduser, join
 
     datafile = join(expanduser('~'), '.beta-vae/chair/chairs.npy')
@@ -41,9 +40,6 @@ def load_chairs() -> np.ndarray:
     train_x = train_x.reshape(train_size, -1)
     test_x = test_x.reshape(test_size, -1)
 
-    train_x = np.array(train_x, dtype=np.bfloat16)
-    test_x = np.array(test_x, dtype=np.bfloat16)
-
     return train_x, test_x
 
 train_x, test_x = load_chairs()
@@ -53,23 +49,27 @@ test_size, _ =  test_x.shape
 image_size = 128
 assert image_size * image_size == dim_feature
 
+#%%
 # Model
 
-dim_hidden = 400
 dim_z = 50
-batch_size = 200
-num_epochs = 15
-learning_rate = 0.0001  # MNIST: 0.001
+batch_size = 50
+n_epochs = 15
+learning_rate = 0.0002  # MNIST: 0.001
 beta = 0.5
 
 class VAEEncoder(nn.Module):
-    dim_hidden: int
     dim_z: int
 
     @nn.compact
     def __call__(self, x: np.ndarray):
-        x = nn.Dense(self.dim_hidden)(x)
-        x = nn.softplus(x)
+        batch_size, dim_feature = x.shape
+        assert dim_feature == image_size * image_size
+        x = x.reshape(batch_size, image_size, image_size, 1)
+
+        x = nn.gelu(nn.Conv(8, (3, 3))(x))
+        x = nn.gelu(nn.Conv(8, (3, 3))(x))
+        x = x.reshape(batch_size, -1)
 
         z_loc = nn.Dense(self.dim_z)(x)
         z_std = np.exp(nn.Dense(self.dim_z)(x))
@@ -77,19 +77,24 @@ class VAEEncoder(nn.Module):
         return z_loc, z_std
 
 class VAEDecoder(nn.Module):
-    dim_hidden: int
     dim_feature: int
 
     @nn.compact
     def __call__(self, z: np.ndarray):
-        z = nn.Dense(self.dim_hidden)(z)
-        z = nn.softplus(z)
+        batch_size, _ = z.shape
+        z = nn.gelu(nn.Dense(image_size * image_size * 8)(z))
+        z = z.reshape(batch_size, image_size, image_size, 8)
+
+        z = nn.gelu(nn.ConvTranspose(8, (3, 3))(z))
+        z = nn.gelu(nn.ConvTranspose(1, (3, 3))(z))
+
+        z = z.reshape(batch_size, -1)
         z = nn.Dense(self.dim_feature)(z)
         x = nn.sigmoid(z)
         return x
 
-encoder_nn = VAEEncoder(dim_hidden, dim_z)
-decoder_nn = VAEDecoder(dim_hidden, dim_feature)
+encoder_nn = VAEEncoder(dim_z)
+decoder_nn = VAEDecoder(dim_feature)
 
 def model(x: np.ndarray):
     decoder = flax_module('decoder', decoder_nn, input_shape=(batch_size, dim_z))
@@ -106,6 +111,7 @@ def guide(x: np.ndarray):
         with numpyro.handlers.scale(scale=beta):
             return numpyro.sample('z', dist.Normal(z_loc, z_std).to_event(1))
 
+#%%
 key = rand.PRNGKey(42)
 
 optimizer = optax.adabelief(learning_rate=learning_rate)
@@ -121,44 +127,54 @@ svi_state = svi.init(subkey, sample_batch)
 num_train = train_size // batch_size
 num_test = test_size // batch_size
 
-def train_step(svi_state):
-    f = jax.jit(svi.update)
-    for i in range(num_train):
-        x = train_x[i*batch_size:(i+1)*batch_size]
-        svi_state, _ = f(svi_state, x)
-    return svi_state
+#%%
+update = jax.jit(svi.update)
 
-def test_step(svi_state):
-    total_loss = 0.0
-    f = jax.jit(svi.evaluate)
-    for i in range(num_test):
-        x = test_x[i*batch_size:(i+1)*batch_size]
-        loss = f(svi_state, x) / batch_size
-        total_loss += loss
-    loss /= num_test
-    return loss
+evaluate = jax.jit(svi.evaluate)
+
+@jax.jit
+def reconstruct(params, x, key):
+    params_encoder = params['encoder$params']
+    z_mean, z_var = encoder_nn.apply({'params': params_encoder}, x)
+    z = dist.Normal(z_mean, z_var).sample(key)
+    params_decoder = params['decoder$params']
+    x_loc = decoder_nn.apply({'params': params_decoder}, z)
+    img = (x * 255.).astype(np.int32).reshape(image_size, image_size)
+    img_loc = (x_loc * 255.).astype(np.int32).reshape(image_size, image_size)
+    return img, img_loc
 
 def reconstruct_img(params, key, epoch):
     key, subkey = rand.split(key)
     idx = rand.choice(subkey, test_size)
-    x = test_x[idx]
-    z_mean, z_var = encoder_nn.apply({'params': params['encoder$params']}, x)
+    x = test_x[idx][None, ...]
+
     key, subkey = rand.split(key)
-    z = dist.Normal(z_mean, z_var).sample(subkey)
-    x_loc = decoder_nn.apply({'params': params['decoder$params']}, z)
-    img = (x * 255.).astype(np.int32).reshape(image_size, image_size)
-    img_loc = (x_loc * 255.).astype(np.int32).reshape(image_size, image_size)
+    img, img_loc = reconstruct(params, x, subkey)
+
     plt.imsave(f'.results/orig_epoch{epoch}.png', img, cmap='gray')
     plt.imsave(f'.results/reco_epoch{epoch}.png', img_loc, cmap='gray')
 
-for i in range(1, num_epochs + 1):
+for epoch in range(1, n_epochs + 1):
     time_start = time.time()
 
-    svi_state = train_step(svi_state)
-    test_loss = test_step(svi_state)
+    # train step
+    for i in range(num_train):
+        x = np.asarray(train_x[i*batch_size:(i+1)*batch_size], dtype=np.bfloat16)
+        svi_state, _ = update(svi_state, x)
 
+    # test step
+    test_loss = 0.0
+    for i in range(num_test):
+        x = np.asarray(test_x[i*batch_size:(i+1)*batch_size], dtype=np.bfloat16)
+        loss = evaluate(svi_state, x) / batch_size
+        test_loss += loss
+    test_loss /= num_test
+
+    # reconstruct
     key, subkey = rand.split(key)
-    reconstruct_img(svi.get_params(svi_state), subkey, i)
+    reconstruct_img(svi.get_params(svi_state), subkey, epoch)
 
     time_elapsed = time.time() - time_start
-    print(f'Epoch {i}, loss {test_loss:.2f}, time {time_elapsed:.2f}s')
+    print(f'Epoch {epoch}, loss {test_loss:.2f}, time {time_elapsed:.2f}s')
+
+# %%
