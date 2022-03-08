@@ -34,17 +34,14 @@ def load_chairs() -> onp.ndarray:
 
     train_size = int(0.8 * data_size)
     test_size = data_size - train_size
-    train_x = x[:train_size]
-    test_x = x[train_size:]
-
-    train_x = train_x.reshape(train_size, -1)
-    test_x = test_x.reshape(test_size, -1)
+    train_x = x[:train_size].reshape(train_size, -1)
+    test_x = x[train_size:].reshape(test_size, -1)
 
     return train_x, test_x
 
 train_x, test_x = load_chairs()
 train_size, dim_feature = train_x.shape
-test_size, _ =  test_x.shape
+test_size, _ = test_x.shape
 
 image_size = 128
 assert image_size * image_size == dim_feature
@@ -52,24 +49,25 @@ assert image_size * image_size == dim_feature
 #%%
 # Model
 
-dim_z = 50
-batch_size = 50
-n_epochs = 15
+dim_z = 10
+batch_size = 500
+n_epochs = 45
 learning_rate = 0.0002  # MNIST: 0.001
-beta = 0.5
+beta = 5
 
 class VAEEncoder(nn.Module):
     dim_z: int
 
     @nn.compact
     def __call__(self, x: np.ndarray):
-        batch_size, dim_feature = x.shape
-        assert dim_feature == image_size * image_size
-        x = x.reshape(batch_size, image_size, image_size, 1)
-
-        x = nn.gelu(nn.Conv(8, (3, 3))(x))
-        x = nn.gelu(nn.Conv(8, (3, 3))(x))
-        x = x.reshape(batch_size, -1)
+        batch_size, _ = x.shape
+        x = x.reshape(batch_size, image_size, image_size, 1)  # (b, 128, 128, 1)
+        x = nn.relu(nn.Conv(32, (4, 4), 2)(x))  # (b, 64, 64, 32)
+        x = nn.relu(nn.Conv(32, (4, 4), 2)(x))  # (b, 32, 32, 32)
+        x = nn.relu(nn.Conv(64, (4, 4), 2)(x))  # (b, 16, 16, 64)
+        x = nn.relu(nn.Conv(64, (4, 4), 2)(x))  # (b, 8, 8, 64)
+        x = nn.relu(nn.Conv(128, (4, 4), 8)(x))  # (b, 1, 1, 128)
+        x = x.reshape(batch_size, 128)
 
         z_loc = nn.Dense(self.dim_z)(x)
         z_std = np.exp(nn.Dense(self.dim_z)(x))
@@ -82,16 +80,16 @@ class VAEDecoder(nn.Module):
     @nn.compact
     def __call__(self, z: np.ndarray):
         batch_size, _ = z.shape
-        z = nn.gelu(nn.Dense(image_size * image_size * 8)(z))
-        z = z.reshape(batch_size, image_size, image_size, 8)
-
-        z = nn.gelu(nn.ConvTranspose(8, (3, 3))(z))
-        z = nn.gelu(nn.ConvTranspose(1, (3, 3))(z))
-
-        z = z.reshape(batch_size, -1)
-        z = nn.Dense(self.dim_feature)(z)
-        x = nn.sigmoid(z)
-        return x
+        z = nn.relu(nn.Dense(128)(z))
+        z = z.reshape(batch_size, 1, 1, 128)  # (b, 1, 1, 128)
+        z = nn.relu(nn.ConvTranspose(64, (4, 4), (8, 8))(z))  # (b, 8, 8, 64)
+        z = nn.relu(nn.ConvTranspose(64, (4, 4), (2, 2))(z))  # (b, 16, 16, 64)
+        z = nn.relu(nn.ConvTranspose(32, (4, 4), (2, 2))(z))  # (b, 32, 32, 32)
+        z = nn.relu(nn.ConvTranspose(32, (4, 4), (2, 2))(z))  # (b, 64, 64, 32)
+        z = nn.relu(nn.ConvTranspose(1, (4, 4), (2, 2))(z))  # (b, 128, 128, 1)
+        z = z.reshape(batch_size, -1)  # (b, 128 * 128)
+        z = nn.relu(nn.Dense(self.dim_feature)(z))
+        return z
 
 encoder_nn = VAEEncoder(dim_z)
 decoder_nn = VAEDecoder(dim_feature)
@@ -129,8 +127,23 @@ num_test = test_size // batch_size
 
 #%%
 update = jax.jit(svi.update)
-
 evaluate = jax.jit(svi.evaluate)
+
+def train_step(key, svi_state):
+    shuffled_idx = rand.permutation(key, train_size)
+    for i in range(num_train):
+        x = train_x[shuffled_idx[i*batch_size:(i+1)*batch_size]]
+        svi_state, _ = update(svi_state, x)
+    return svi_state
+
+def test_step(svi_state):
+    test_loss = 0.0
+    for i in range(num_test):
+        x = test_x[i*batch_size:(i+1)*batch_size]
+        loss = evaluate(svi_state, x) / batch_size
+        test_loss += loss
+    test_loss /= num_test
+    return test_loss
 
 @jax.jit
 def reconstruct(params, x, key):
@@ -157,20 +170,10 @@ def reconstruct_img(params, key, epoch):
 for epoch in range(1, n_epochs + 1):
     time_start = time.time()
 
-    # train step
-    for i in range(num_train):
-        x = np.asarray(train_x[i*batch_size:(i+1)*batch_size], dtype=np.bfloat16)
-        svi_state, _ = update(svi_state, x)
+    key, subkey = rand.split(key)
+    svi_state = train_step(subkey, svi_state)
+    test_loss = test_step(svi_state)
 
-    # test step
-    test_loss = 0.0
-    for i in range(num_test):
-        x = np.asarray(test_x[i*batch_size:(i+1)*batch_size], dtype=np.bfloat16)
-        loss = evaluate(svi_state, x) / batch_size
-        test_loss += loss
-    test_loss /= num_test
-
-    # reconstruct
     key, subkey = rand.split(key)
     reconstruct_img(svi.get_params(svi_state), subkey, epoch)
 
