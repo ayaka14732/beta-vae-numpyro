@@ -42,8 +42,8 @@ assert image_size * image_size == dim_feature
 
 dim_z = 50
 batch_size = 128
-n_epochs = 80
-learning_rate = 0.00008  # MNIST: 0.001
+n_epochs = 30
+learning_rate = 0.0001  # MNIST: 0.001
 beta = 4
 
 class VAEEncoder(nn.Module):
@@ -111,19 +111,13 @@ evaluate = jax.jit(svi.evaluate)
 
 def train_step(key, svi_state):
     shuffled_idx = rand.permutation(key, data_size)
+    total_loss = 0.0
     for i in range(num_data):
         x = data_x[shuffled_idx[i*batch_size:(i+1)*batch_size]]
-        svi_state, _ = update(svi_state, x)
-    return svi_state
-
-def test_step(svi_state):
-    test_loss = 0.0
-    for i in range(num_data):
-        x = data_x[i*batch_size:(i+1)*batch_size]
-        loss = evaluate(svi_state, x) / batch_size
-        test_loss += loss
-    test_loss /= num_data
-    return test_loss
+        svi_state, loss = update(svi_state, x)
+        total_loss += loss / batch_size
+    total_loss /= num_data
+    return svi_state, total_loss
 
 @jax.jit
 def reconstruct(params, x, key):
@@ -150,14 +144,15 @@ for epoch in range(1, n_epochs + 1):
     time_start = time.time()
 
     key, subkey = rand.split(key)
-    svi_state = train_step(subkey, svi_state)
-    test_loss = test_step(svi_state)
+    svi_state, total_loss = train_step(subkey, svi_state)
 
     key, subkey = rand.split(key)
     reconstruct_img(svi.get_params(svi_state), subkey, epoch)
 
     time_elapsed = time.time() - time_start
-    print(f'Epoch {epoch}, loss {test_loss:.2f}, time {time_elapsed:.2f}s')
+    print(f'Epoch {epoch}, loss {total_loss:.2f}, time {time_elapsed:.2f}s')
 
-pickle.dump(svi.get_params(svi_state)['encoder$params'], 'params_chair_encoder.pickle')
-pickle.dump(svi.get_params(svi_state)['decoder$params'], 'params_chair_decoder.pickle')
+with open('params_chair_encoder.pickle', 'wb') as f:
+    pickle.dump(svi.get_params(svi_state)['encoder$params'], f)
+with open('params_chair_decoder.pickle', 'wb') as f:
+    pickle.dump(svi.get_params(svi_state)['decoder$params'], f)
