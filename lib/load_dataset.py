@@ -18,9 +18,22 @@ def load_chairs() -> onp.ndarray:
 
     return data_x
 
+def load_celeba() -> onp.ndarray:
+    from os.path import expanduser, join
+    from PIL import Image
+
+    filenames = join(expanduser('~'), '.beta-vae/celeba/dataset/img_align_celeba/img_align_celeba/*.jpg')
+    filenames = filenames[:16384]  # size: 16384*278*178*3*4/1024/1024/1024 = ~9G
+
+    data_x = onp.asarray([onp.asarray(Image.open(filename), dtype=onp.float32) for filename in filenames]) / 255.
+
+    return data_x
+
 def load_dataset(dataset: str) -> onp.ndarray:
     if dataset == 'mnist':
         return load_mnist()
     if dataset == 'chairs':
         return load_chairs()
-    raise ValueError("Unsupported dataset, please select one of: ['mnist', 'chairs'].")
+    if dataset == 'celeba':
+        return load_celeba()
+    raise ValueError("Unsupported dataset, please select one of: ['mnist', 'chairs', 'celeba'].")

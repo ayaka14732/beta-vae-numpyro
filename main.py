@@ -15,6 +15,7 @@ from lib import load_dataset, VAEEncoder, VAEDecoder
 # Dataset
 
 data_x = load_dataset(dataset='chairs')
+data_x = np.asarray(data_x)  # transfer to default device
 data_size, dim_feature = data_x.shape
 
 image_size = 128
@@ -22,8 +23,8 @@ assert image_size * image_size == dim_feature
 
 # Model
 
-dim_z = 50
-batch_size = 128
+dim_z = 32
+batch_size = 64
 n_epochs = 100
 learning_rate = 0.0001  # MNIST: 0.001
 beta = 4

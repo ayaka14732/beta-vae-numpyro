@@ -17,7 +17,7 @@ data_size, dim_feature = data_x.shape
 image_size = 128
 assert dim_feature == image_size * image_size
 
-dim_z = 50
+dim_z = 32
 
 key = rand.PRNGKey(42)
 
