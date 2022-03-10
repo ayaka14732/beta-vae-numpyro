@@ -61,7 +61,6 @@ svi_state = svi.init(subkey, sample_batch)
 num_data = data_size // batch_size
 
 update = jax.jit(svi.update)
-evaluate = jax.jit(svi.evaluate)
 
 def train_step(key, svi_state):
     shuffled_idx = rand.permutation(key, data_size)
@@ -75,15 +74,18 @@ def train_step(key, svi_state):
 
 @jax.jit
 def reconstruct(params, x, key):
+    img = (x * 255.).astype(np.int32).reshape(image_size, image_size)
+
     params_encoder = params['encoder$params']
+    params_decoder = params['decoder$params']
+
     z_mean, z_var = encoder_nn.apply({'params': params_encoder}, x)
     z = dist.Normal(z_mean, z_var).sample(key)
-    params_decoder = params['decoder$params']
     x_loc = decoder_nn.apply({'params': params_decoder}, z)
-    img = (x * 255.).astype(np.int32).reshape(image_size, image_size)
+
     img_loc = (x_loc * 255.).astype(np.int32).reshape(image_size, image_size)
-    imgs = np.hstack((img, img_loc))
-    return imgs
+
+    return np.hstack((img, img_loc))
 
 def reconstruct_img(params, key, epoch):
     key, subkey = rand.split(key)
