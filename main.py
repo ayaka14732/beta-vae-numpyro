@@ -1,4 +1,3 @@
-import flax.linen as nn
 import jax
 import jax.numpy as np
 import jax.random as rand
@@ -11,7 +10,7 @@ import optax
 import pickle
 import time
 
-from lib import load_dataset
+from lib import load_dataset, VAEEncoder, VAEDecoder
 
 # Dataset
 
@@ -25,40 +24,12 @@ assert image_size * image_size == dim_feature
 
 dim_z = 50
 batch_size = 128
-n_epochs = 30
+n_epochs = 100
 learning_rate = 0.0001  # MNIST: 0.001
 beta = 4
 
-class VAEEncoder(nn.Module):
-    @nn.compact
-    def __call__(self, x: np.ndarray):
-        batch_size, _ = x.shape
-        x = x.reshape(batch_size, image_size, image_size, 1)  # (b, 128, 128, 1)
-        x = nn.softplus(nn.Conv(16, (4, 4), 1)(x))  # (b, 128, 128, 16)
-        x = nn.softplus(nn.Conv(32, (4, 4), 2)(x))  # (b, 64, 64, 32)
-        x = nn.softplus(nn.Conv(64, (4, 4), 2)(x))  # (b, 32, 32, 64)
-        x = x.reshape(batch_size, -1)  # (b, 32 * 32 * 64)
-
-        z_loc = nn.Dense(dim_z)(x)
-        z_std = np.exp(nn.Dense(dim_z)(x))
-
-        return z_loc, z_std
-
-class VAEDecoder(nn.Module):
-    @nn.compact
-    def __call__(self, z: np.ndarray):
-        batch_size, _ = z.shape
-        z = nn.softplus(nn.Dense(32 * 32 * 64)(z))
-        z = z.reshape(batch_size, 32, 32, 64)  # (b, 32, 32, 64)
-        z = nn.softplus(nn.ConvTranspose(32, (4, 4), (2, 2))(z))  # (b, 64, 64, 32)
-        z = nn.softplus(nn.ConvTranspose(16, (4, 4))(z))  # (b, 128, 128, 16)
-        z = nn.softplus(nn.ConvTranspose(1, (4, 4))(z))  # (b, 128, 128, 1)
-        z = z.reshape(batch_size, -1)  # (b, 128 * 128)
-        z = nn.sigmoid(nn.Dense(dim_feature)(z))
-        return z
-
-encoder_nn = VAEEncoder()
-decoder_nn = VAEDecoder()
+encoder_nn = VAEEncoder(image_size, dim_z)
+decoder_nn = VAEDecoder(image_size)
 
 def model(x: np.ndarray):
     decoder = flax_module('decoder', decoder_nn, input_shape=(batch_size, dim_z))
