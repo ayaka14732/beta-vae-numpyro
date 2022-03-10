@@ -10,7 +10,7 @@ def load_mnist() -> onp.ndarray:
 def load_chairs() -> onp.ndarray:
     from os.path import expanduser, join
 
-    datafile = join(expanduser('~'), '.beta-vae/chair/chairs.npy')
+    datafile = join(expanduser('~'), '.beta-vae/chairs/chairs.npy')
     data_x = onp.load(datafile)
 
     data_size, _, _ = data_x.shape

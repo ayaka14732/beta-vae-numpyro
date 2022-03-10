@@ -1,4 +1,4 @@
-# ~/.beta-vae/chair/chairs.npy
+# ~/.beta-vae/chairs/chairs.npy
 # < 30 secs on 96 cpus
 # shape: (86366, 128, 128)
 
@@ -16,7 +16,7 @@ def load_one_file(filename: str) -> onp.ndarray:
         .resize((128, 128)))
 
 def main():
-    root = join(expanduser('~'), '.beta-vae/chair')
+    root = join(expanduser('~'), '.beta-vae/chairs')
     filenames = glob(join(root, 'rendered_chairs/**/*.png'), recursive=True)
     with Pool() as p:
         images = tqdm(p.imap(load_one_file, filenames), total=len(filenames))
