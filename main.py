@@ -16,10 +16,7 @@ from lib import load_dataset, VAEEncoder, VAEDecoder
 
 data_x = load_dataset(dataset='chairs')
 data_x = np.asarray(data_x)  # transfer to default device
-data_size, dim_feature = data_x.shape
-
-image_size = 128
-assert image_size * image_size == dim_feature
+data_size, image_size, _ = data_x.shape
 
 # Model
 
@@ -38,10 +35,10 @@ def model(x: np.ndarray):
         with numpyro.handlers.scale(scale=beta):
             z = numpyro.sample('z', dist.Normal(0, 1).expand([dim_z]).to_event(1))
         img_loc = decoder(z)
-        return numpyro.sample('obs', dist.Bernoulli(img_loc).to_event(1), obs=x)
+        return numpyro.sample('obs', dist.Bernoulli(img_loc).to_event(2), obs=x)
 
 def guide(x: np.ndarray):
-    encoder = flax_module('encoder', encoder_nn, input_shape=(batch_size, dim_feature))
+    encoder = flax_module('encoder', encoder_nn, input_shape=(batch_size, image_size, image_size))
     z_loc, z_std = encoder(x)
     with numpyro.plate('batch', batch_size):
         with numpyro.handlers.scale(scale=beta):

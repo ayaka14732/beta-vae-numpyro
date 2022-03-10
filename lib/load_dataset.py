@@ -13,9 +13,6 @@ def load_chairs() -> onp.ndarray:
     datafile = join(expanduser('~'), '.beta-vae/chairs/chairs.npy')
     data_x = onp.load(datafile)
 
-    data_size, _, _ = data_x.shape
-    data_x = data_x.reshape(data_size, -1)
-
     return data_x
 
 def load_celeba() -> onp.ndarray:
