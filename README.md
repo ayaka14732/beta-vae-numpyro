@@ -16,4 +16,6 @@ python main.py
 
 Latent space traversal:
 
-TODO
+```sh
+python traverse_chairs.py
+```

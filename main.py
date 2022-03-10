@@ -3,7 +3,6 @@ import jax
 import jax.numpy as np
 import jax.random as rand
 import matplotlib.pyplot as plt
-import numpy as onp
 import numpyro
 from numpyro.contrib.module import flax_module
 import numpyro.distributions as dist
@@ -12,27 +11,11 @@ import optax
 import pickle
 import time
 
+from lib import load_dataset
+
 # Dataset
 
-def load_mnist() -> onp.ndarray:
-    from datasets import load_dataset
-    from itertools import chain
-    train_set, test_set = load_dataset('mnist', split=('train', 'test'))
-    data_x = onp.asarray([onp.asarray(x, dtype=onp.float32).reshape(-1) for x in chain(train_set['image'], test_set['image'])]) / 255.
-    return data_x
-
-def load_chairs() -> onp.ndarray:
-    from os.path import expanduser, join
-
-    datafile = join(expanduser('~'), '.beta-vae/chair/chairs.npy')
-    data_x = onp.load(datafile)
-
-    data_size, _, _ = data_x.shape
-    data_x = data_x.reshape(data_size, -1)
-
-    return data_x
-
-data_x = load_chairs()
+data_x = load_dataset(dataset='chairs')
 data_size, dim_feature = data_x.shape
 
 image_size = 128
