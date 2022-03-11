@@ -21,7 +21,7 @@ data_size, image_size, _ = data_x.shape
 
 dim_z = 32
 batch_size = 64
-n_epochs = 100
+n_epochs = 80
 learning_rate = 0.0001  # MNIST: 0.001
 beta = 4
 

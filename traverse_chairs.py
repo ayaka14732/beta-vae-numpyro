@@ -12,10 +12,9 @@ jax.config.update('jax_platform_name', 'cpu')
 
 data_x = load_dataset(dataset='chairs')
 
-data_size, dim_feature = data_x.shape
+data_size, _, _ = data_x.shape
 
 image_size = 128
-assert dim_feature == image_size * image_size
 
 dim_z = 32
 
