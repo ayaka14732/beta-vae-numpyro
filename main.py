@@ -15,7 +15,6 @@ from lib import load_dataset, VAEEncoder, VAEDecoder
 # Dataset
 
 data_x = load_dataset(dataset='chairs')
-data_x = np.asarray(data_x)  # transfer to default device
 data_size, image_size, _ = data_x.shape
 
 # Model
@@ -52,9 +51,11 @@ svi = SVI(model, guide, optimizer, Trace_ELBO())
 key, subkey = rand.split(key)
 sample_batch_idx = rand.permutation(subkey, data_size)[:batch_size]
 sample_batch = data_x[sample_batch_idx]
+del sample_batch_idx
 
 key, subkey = rand.split(key)
 svi_state = svi.init(subkey, sample_batch)
+del sample_batch
 
 num_data = data_size // batch_size
 
