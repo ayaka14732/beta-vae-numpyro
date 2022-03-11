@@ -2,7 +2,7 @@
 
 ## Run
 
-Prepare data::
+Prepare data:
 
 ```sh
 ./prepare_data.sh
@@ -12,7 +12,7 @@ python preprocess_chairs.py
 Train:
 
 ```sh
-python main.py
+python train.py
 ```
 
 Latent space traversal:

@@ -107,7 +107,7 @@ for epoch in range(1, n_epochs + 1):
     time_elapsed = time.time() - time_start
     print(f'Epoch {epoch}, loss {total_loss:.2f}, time {time_elapsed:.2f}s')
 
-with open('params_chairs_encoder.pickle', 'wb') as f:
+with open(f'params_chairs_{beta}_encoder.pickle', 'wb') as f:
     pickle.dump(svi.get_params(svi_state)['encoder$params'], f)
-with open('params_chairs_decoder.pickle', 'wb') as f:
+with open(f'params_chairs_{beta}_decoder.pickle', 'wb') as f:
     pickle.dump(svi.get_params(svi_state)['decoder$params'], f)

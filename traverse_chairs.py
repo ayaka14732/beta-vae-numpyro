@@ -17,20 +17,21 @@ data_size, _, _ = data_x.shape
 image_size = 128
 
 dim_z = 32
+beta = 4
 
 key = rand.PRNGKey(42)
 
 encoder_nn = VAEEncoder(image_size, dim_z)
 decoder_nn = VAEDecoder(image_size)
 
-with open('params_chairs_encoder.pickle', 'rb') as f:
+with open(f'params_chairs_{beta}_encoder.pickle', 'rb') as f:
     params_encoder = pickle.load(f)
 
-with open('params_chairs_decoder.pickle', 'rb') as f:
+with open(f'params_chairs_{beta}_decoder.pickle', 'rb') as f:
     params_decoder = pickle.load(f)
 
 # %%
-def reconstruct(x, delta=2., n=8, target_dims=(0, 1)):
+def traverse(x, delta=2., n=8, target_dims=(0, 1)):
     # img = (x * 255.).astype(np.int32).reshape(image_size, image_size)
 
     z_mean, z_var = encoder_nn.apply({'params': params_encoder}, x)
@@ -59,7 +60,7 @@ idx = 81941
 x = data_x[idx][None, ...]
 
 key, subkey = rand.split(key)
-imgs = reconstruct(x, delta=2., target_dims=(0, 15))
-plt.imsave('1.png', imgs, cmap='gray')
+imgs = traverse(x, delta=2., n=5, target_dims=(3, 14))
+plt.imsave(f'traverse_chairs_{beta}.png', imgs, cmap='gray')
 
 # %%
