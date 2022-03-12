@@ -15,21 +15,20 @@ from lib import load_dataset, VAEEncoder, VAEDecoder
 
 # Dataset
 
-dataset = 'chairs'
+dataset = 'celeba'  # 'chairs'
 data_x = load_dataset(dataset=dataset)
 data_size, *image_shape = data_x.shape
-image_size = image_shape[0]
 
 # Model
 
-dim_z = 32
-batch_size = 64
-n_epochs = 80
-learning_rate = 0.0001  # MNIST: 0.001
+dim_z = 56
+batch_size = 768
+n_epochs = 300
+learning_rate = 0.00002  # MNIST: 0.001
 beta = 4
 
-encoder_nn = VAEEncoder(image_size, dim_z)
-decoder_nn = VAEDecoder(image_size)
+encoder_nn = VAEEncoder(dim_z)
+decoder_nn = VAEDecoder()
 
 def model(x: np.ndarray):
     decoder = flax_module('decoder', decoder_nn, input_shape=(batch_size, dim_z))
@@ -49,7 +48,7 @@ def guide(x: np.ndarray):
 
 key = rand.PRNGKey(42)
 
-optimizer = optax.adam(learning_rate=learning_rate)
+optimizer = optax.fromage(learning_rate=learning_rate)
 svi = SVI(model, guide, optimizer, Trace_ELBO())
 
 key, subkey = rand.split(key)
@@ -97,7 +96,7 @@ def reconstruct_img(params, key, epoch):
 
     key, subkey = rand.split(key)
     imgs = reconstruct(params, x, subkey)
-    plt.imsave(f'.results/epoch{epoch}.png', imgs, cmap='gray')
+    plt.imsave(f'.results/epoch{epoch}.png', imgs)
 
 for epoch in range(1, n_epochs + 1):
     time_start = time.time()
