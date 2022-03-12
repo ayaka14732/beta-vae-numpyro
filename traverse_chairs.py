@@ -10,11 +10,10 @@ from lib import load_dataset, VAEEncoder, VAEDecoder
 
 jax.config.update('jax_platform_name', 'cpu')
 
-data_x = load_dataset(dataset='chairs')
-
-data_size, _, _ = data_x.shape
-
-image_size = 128
+dataset = 'chairs'
+data_x = load_dataset(dataset=dataset)
+data_size, *image_shape = data_x.shape
+image_size = image_shape[0]
 
 dim_z = 32
 beta = 4
@@ -24,10 +23,10 @@ key = rand.PRNGKey(42)
 encoder_nn = VAEEncoder(image_size, dim_z)
 decoder_nn = VAEDecoder(image_size)
 
-with open(f'params_chairs_{beta}_encoder.pickle', 'rb') as f:
+with open(f'params_{dataset}_{beta}_encoder.pickle', 'rb') as f:
     params_encoder = pickle.load(f)
 
-with open(f'params_chairs_{beta}_decoder.pickle', 'rb') as f:
+with open(f'params_{dataset}_{beta}_decoder.pickle', 'rb') as f:
     params_decoder = pickle.load(f)
 
 # %%
@@ -47,9 +46,9 @@ def traverse(x, delta=2., n=8, target_dims=(0, 1)):
     z = z.reshape(n * n, dim_z)
 
     x_loc = decoder_nn.apply({'params': params_decoder}, z)
-    img_loc = (x_loc * 255.).astype(np.int32)
+    img_loc = (x_loc * 255.).astype(np.uint8)
     
-    img_loc = img_loc.reshape(n, n, image_size, image_size)
+    img_loc = img_loc.reshape(n, n, *image_shape)
     imgs = np.hstack(np.hstack(img_loc))
     return imgs
 

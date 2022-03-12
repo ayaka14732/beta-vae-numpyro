@@ -12,3 +12,7 @@ tar --skip-old-files -xvf ~/.beta-vae/chairs/rendered_chairs.tar -C ~/.beta-vae/
 
 # faces
 # See https://faces.dmi.unibas.ch/bfm/bfm2019.html
+
+# dsprites, shape: (737280, 64, 64), 0-1 matrix
+mkdir -p ~/.beta-vae/dsprites
+wget -nc -P ~/.beta-vae/dsprites https://github.com/deepmind/dsprites-dataset/raw/master/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz

@@ -16,13 +16,15 @@ def load_chairs() -> onp.ndarray:
     return data_x
 
 def load_celeba() -> onp.ndarray:
+    from glob import glob
     from os.path import expanduser, join
     from PIL import Image
 
-    filenames = join(expanduser('~'), '.beta-vae/celeba/dataset/img_align_celeba/img_align_celeba/*.jpg')
-    filenames = filenames[:16384]  # size: 16384*278*178*3*4/1024/1024/1024 = ~9G
+    filenames = glob(join(expanduser('~'), '.beta-vae/celeba/dataset/img_align_celeba/img_align_celeba/*.jpg'))
+    filenames = filenames[:98304]  # size: 98304*216*176*3*4/1024/1024/1024 = ~41.8G
 
-    data_x = onp.asarray([onp.asarray(Image.open(filename), dtype=onp.float32) for filename in filenames]) / 255.
+    # cut (202599, 218, 178, 3) -> (202599, 216, 216, 3) for easier nn.Conv
+    data_x = onp.asarray([onp.asarray(Image.open(filename), dtype=onp.float32)[:216, :176] for filename in filenames]) / 255.
 
     return data_x
 

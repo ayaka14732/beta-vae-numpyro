@@ -2,6 +2,7 @@ import jax
 import jax.numpy as np
 import jax.random as rand
 import matplotlib.pyplot as plt
+import numpy as onp
 import numpyro
 from numpyro.contrib.module import flax_module
 import numpyro.distributions as dist
@@ -14,8 +15,10 @@ from lib import load_dataset, VAEEncoder, VAEDecoder
 
 # Dataset
 
-data_x = load_dataset(dataset='chairs')
-data_size, image_size, _ = data_x.shape
+dataset = 'chairs'
+data_x = load_dataset(dataset=dataset)
+data_size, *image_shape = data_x.shape
+image_size = image_shape[0]
 
 # Model
 
@@ -34,10 +37,11 @@ def model(x: np.ndarray):
         with numpyro.handlers.scale(scale=beta):
             z = numpyro.sample('z', dist.Normal(0, 1).expand([dim_z]).to_event(1))
         img_loc = decoder(z)
-        return numpyro.sample('obs', dist.Bernoulli(img_loc).to_event(2), obs=x)
+        reinterpreted_batch_ndims = len(image_shape)
+        return numpyro.sample('obs', dist.Bernoulli(img_loc).to_event(reinterpreted_batch_ndims), obs=x)
 
 def guide(x: np.ndarray):
-    encoder = flax_module('encoder', encoder_nn, input_shape=(batch_size, image_size, image_size))
+    encoder = flax_module('encoder', encoder_nn, input_shape=(batch_size, *image_shape))
     z_loc, z_std = encoder(x)
     with numpyro.plate('batch', batch_size):
         with numpyro.handlers.scale(scale=beta):
@@ -49,7 +53,7 @@ optimizer = optax.adam(learning_rate=learning_rate)
 svi = SVI(model, guide, optimizer, Trace_ELBO())
 
 key, subkey = rand.split(key)
-sample_batch_idx = rand.permutation(subkey, data_size)[:batch_size]
+sample_batch_idx = onp.asarray(rand.permutation(subkey, data_size)[:batch_size])
 sample_batch = data_x[sample_batch_idx]
 del sample_batch_idx
 
@@ -73,7 +77,7 @@ def train_step(key, svi_state):
 
 @jax.jit
 def reconstruct(params, x, key):
-    img = (x * 255.).astype(np.int32).reshape(image_size, image_size)
+    img = (x * 255.).astype(np.uint8).reshape(*image_shape)
 
     params_encoder = params['encoder$params']
     params_decoder = params['decoder$params']
@@ -82,7 +86,7 @@ def reconstruct(params, x, key):
     z = dist.Normal(z_mean, z_var).sample(key)
     x_loc = decoder_nn.apply({'params': params_decoder}, z)
 
-    img_loc = (x_loc * 255.).astype(np.int32).reshape(image_size, image_size)
+    img_loc = (x_loc * 255.).astype(np.uint8).reshape(*image_shape)
 
     return np.hstack((img, img_loc))
 
@@ -107,7 +111,7 @@ for epoch in range(1, n_epochs + 1):
     time_elapsed = time.time() - time_start
     print(f'Epoch {epoch}, loss {total_loss:.2f}, time {time_elapsed:.2f}s')
 
-with open(f'params_chairs_{beta}_encoder.pickle', 'wb') as f:
+with open(f'params_{dataset}_{beta}_encoder.pickle', 'wb') as f:
     pickle.dump(svi.get_params(svi_state)['encoder$params'], f)
-with open(f'params_chairs_{beta}_decoder.pickle', 'wb') as f:
+with open(f'params_{dataset}_{beta}_decoder.pickle', 'wb') as f:
     pickle.dump(svi.get_params(svi_state)['decoder$params'], f)
