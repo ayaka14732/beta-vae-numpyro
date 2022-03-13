@@ -23,7 +23,7 @@ def load_celeba() -> onp.ndarray:
     filenames = glob(join(expanduser('~'), '.beta-vae/celeba/dataset/img_align_celeba/img_align_celeba/*.jpg'))
     filenames = filenames[:98304]  # size: 98304*216*176*3*4/1024/1024/1024 = ~41.8G
 
-    # cut (202599, 218, 178, 3) -> (202599, 216, 216, 3) for easier nn.Conv
+    # cut (202599, 218, 178, 3) -> (202599, 216, 176, 3) for easier nn.Conv
     data_x = onp.asarray([onp.asarray(Image.open(filename), dtype=onp.float32)[:216, :176] for filename in filenames]) / 255.
 
     return data_x
