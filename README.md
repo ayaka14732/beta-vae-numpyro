@@ -6,7 +6,6 @@ Prepare data:
 
 ```sh
 ./prepare_data.sh
-python preprocess_chairs.py
 ```
 
 Train:

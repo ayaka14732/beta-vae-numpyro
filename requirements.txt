@@ -2,6 +2,7 @@ autopep8
 ipykernel
 jupyter
 ipywidgets
+kaggle
 datasets==1.18.3
 matplotlib==3.5.1
 jax==0.3.1

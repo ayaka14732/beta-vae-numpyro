@@ -9,9 +9,7 @@ unzip -n ~/.beta-vae/celeba/celeba-dataset.zip -d ~/.beta-vae/celeba/dataset
 mkdir -p ~/.beta-vae/chairs
 wget -nc -P ~/.beta-vae/chairs https://www.di.ens.fr/willow/research/seeing3Dchairs/data/rendered_chairs.tar
 tar --skip-old-files -xvf ~/.beta-vae/chairs/rendered_chairs.tar -C ~/.beta-vae/chairs
-
-# faces
-# See https://faces.dmi.unibas.ch/bfm/bfm2019.html
+python preprocess_chairs.py
 
 # dsprites, shape: (737280, 64, 64), 0-1 matrix
 mkdir -p ~/.beta-vae/dsprites
