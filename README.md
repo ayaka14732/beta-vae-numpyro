@@ -45,10 +45,10 @@ The code for verifying the disentanglement metric is in the `disentanglement-met
 
 ## Sample results
 
-![](demo/traverse_celeba_4_1530_3_28.png)
+<img src="demo/traverse_celeba_4_1530_3_28.png" width="300px">
 
-![](demo/traverse_celeba_4_1548_3_28.png)
+<img src="demo/traverse_celeba_4_1548_3_28.png" width="300px">
 
-![](demo/traverse_celeba_4_1594_18_44.png)
+<img src="demo/traverse_celeba_4_1594_18_44.png" width="300px">
 
-![](demo/traverse_celeba_4_1604_40_28.png)
+<img src="demo/traverse_celeba_4_1604_40_28.png" width="300px">
