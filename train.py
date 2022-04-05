@@ -22,9 +22,9 @@ data_size, *image_shape = data_x.shape
 # Model
 
 dim_z = 56
-batch_size = 768
-n_epochs = 300
-learning_rate = 0.00002  # MNIST: 0.001
+batch_size = 1024
+n_epochs = 500
+learning_rate = 0.01  # MNIST: 0.001
 beta = 4
 
 encoder_nn = VAEEncoder(dim_z)
@@ -96,7 +96,7 @@ def reconstruct_img(params, key, epoch):
 
     key, subkey = rand.split(key)
     imgs = reconstruct(params, x, subkey)
-    plt.imsave(f'.results/epoch{epoch}.png', imgs)
+    plt.imsave(f'.results-3/epoch{epoch}.png', imgs)
 
 for epoch in range(1, n_epochs + 1):
     time_start = time.time()
@@ -108,7 +108,8 @@ for epoch in range(1, n_epochs + 1):
     reconstruct_img(svi.get_params(svi_state), subkey, epoch)
 
     time_elapsed = time.time() - time_start
-    print(f'Epoch {epoch}, loss {total_loss:.2f}, time {time_elapsed:.2f}s')
+    if epoch % 4 == 1:
+        print(f'Epoch {epoch}, loss {total_loss:.2f}, time {time_elapsed:.2f}s')
 
 with open(f'params_{dataset}_{beta}_encoder.pickle', 'wb') as f:
     pickle.dump(svi.get_params(svi_state)['encoder$params'], f)

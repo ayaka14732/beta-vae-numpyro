@@ -8,23 +8,23 @@ def load_mnist() -> onp.ndarray:
     return data_x
 
 def load_chairs() -> onp.ndarray:
-    from os.path import expanduser, join
+    from os.path import expanduser
 
-    datafile = join(expanduser('~'), '.beta-vae/chairs/chairs.npy')
+    datafile = expanduser('~/shared/.beta-vae/chairs/chairs.npy')
     data_x = onp.load(datafile)
 
     return data_x
 
 def load_celeba() -> onp.ndarray:
     from glob import glob
-    from os.path import expanduser, join
+    from os.path import expanduser
     from PIL import Image
 
-    filenames = glob(join(expanduser('~'), '.beta-vae/celeba/dataset/img_align_celeba/img_align_celeba/*.jpg'))
-    filenames = filenames[:98304]  # size: 98304*216*176*3*4/1024/1024/1024 = ~41.8G
+    filenames = glob(expanduser('~/shared/.beta-vae/celeba/dataset/img_align_celeba/img_align_celeba/*.jpg'))
+    filenames = filenames[:16384]  # size: 98304*216*176*3*4/1024/1024/1024 = ~41.8G
 
-    # cut (202599, 218, 178, 3) -> (202599, 216, 176, 3) for easier nn.Conv
-    data_x = onp.asarray([onp.asarray(Image.open(filename), dtype=onp.float32)[:216, :176] for filename in filenames]) / 255.
+    # cut (202599, 218, 178, 3) -> (202599, 208, 176, 3) for easier nn.Conv
+    data_x = onp.asarray([onp.asarray(Image.open(filename), dtype=onp.float32)[:208, :176] for filename in filenames]) / 255.
 
     return data_x
 
